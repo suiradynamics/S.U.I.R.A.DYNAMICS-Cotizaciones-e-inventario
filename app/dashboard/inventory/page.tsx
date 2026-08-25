@@ -13,14 +13,13 @@ export default function InventoryPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const supabase = createClient();
-
   useEffect(() => {
     fetchItems();
   }, []);
 
   async function fetchItems() {
     setLoading(true);
+    const supabase = createClient();
     const { data } = await supabase.from('inventory').select('*').order('name');
     if (data) setItems(data);
     setLoading(false);
@@ -38,6 +37,7 @@ export default function InventoryPage() {
     }
 
     if (deleteId) {
+      const supabase = createClient();
       await supabase.from('inventory').delete().eq('id', deleteId);
       setDeleteId(null);
       setDeletePassword('');
