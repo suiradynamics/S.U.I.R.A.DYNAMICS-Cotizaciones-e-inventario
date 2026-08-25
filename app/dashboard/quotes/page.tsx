@@ -2,107 +2,173 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Quote } from '@/lib/types';
+import { useParams } from 'next/navigation';
 
-interface Quote {
-  id: string;
-  quote_number: string;
-  client_name: string;
-  total_amount: number;
-  status: string;
-  created_at: string;
-}
-
-export default function QuotesPage() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+export default function PublicQuotePage() {
+  const params = useParams();
+  const token = params?.token as string;
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [expired, setExpired] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
-    async function fetchQuotes() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
+    if (!token) return;
 
-      // Consultamos las cotizaciones en Supabase (asumiendo una tabla llamada 'quotes')
-      const { data, error } = await supabase
+    async function loadQuote() {
+      const { data } = await supabase
         .from('quotes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .eq('public_token', token)
+        .single();
 
-      if (!error && data) {
-        setQuotes(data);
+      if (data) {
+        setQuote(data);
+
+        // Registrar lectura en vivo si es la primera vez que entra
+        if (!data.viewed_at) {
+          await supabase
+            .from('quotes')
+            .update({ viewed_at: new Date().toISOString() })
+            .eq('id', data.id);
+        }
       }
-      setLoading(false);
     }
 
-    fetchQuotes();
-  }, [router, supabase]);
+    loadQuote();
+  }, [token, supabase]);
+
+  // Cronómetro de validez en vivo
+  useEffect(() => {
+    if (!quote) return;
+
+    const timer = setInterval(() => {
+      const expires = new Date(quote.expires_at).getTime();
+      const now = new Date().getTime();
+      const diff = expires - now;
+
+      if (diff <= 0) {
+        setExpired(true);
+        setTimeLeft('Cotización Expirada');
+        clearInterval(timer);
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [quote]);
+
+  const handleDownload = async () => {
+    if (!quote) return;
+    
+    // Registrar evento de descarga
+    await supabase
+      .from('quotes')
+      .update({ downloaded_at: new Date().toISOString() })
+      .eq('id', quote.id);
+
+    window.print(); // Abre el diálogo nativo para imprimir o guardar como PDF
+  };
+
+  if (!quote) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-500">Cargando cotización...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+    <div className="min-h-screen bg-gray-100 p-4 md:p-10 flex flex-col items-center">
+      <div className="max-w-3xl w-full bg-white rounded-lg shadow-lg overflow-hidden border">
+        {/* Encabezado Corporativo */}
+        <div className="bg-navy-900 text-white p-6 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestión de Cotizaciones</h1>
-            <p className="text-sm text-gray-600">Emisión y seguimiento de documentos comerciales</p>
+            <h1 className="text-xl font-bold">S.U.I.R.A. Dynamics</h1>
+            <p className="text-xs text-gray-300">Cotización Oficial Nº #{quote.quote_number}</p>
           </div>
-          <div className="flex gap-4">
-            <Link
-              href="/dashboard"
-              className="rounded-md bg-gray-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-500"
-            >
-              Volver al Panel
-            </Link>
+          <div className="text-right">
+            <p className="text-xs text-gray-300">Tiempo de Validez:</p>
+            <p className={`text-sm font-extrabold ${expired ? 'text-brandRed-500' : 'text-green-400'}`}>
+              {timeLeft}
+            </p>
           </div>
         </div>
 
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          {loading ? (
-            <div className="p-6 text-center text-gray-500">Cargando cotizaciones...</div>
-          ) : quotes.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-gray-500 mb-4">No hay cotizaciones registradas todavía.</p>
-              <span className="inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
-                Próximamente: Botón para crear nueva cotización
-              </span>
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nº Cotización</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+        {/* Datos del Cliente y Empresa */}
+        <div className="p-6 border-b grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="font-bold text-gray-700">Cliente:</p>
+            <p className="text-navy-900 font-semibold">{quote.client_name}</p>
+            <p className="text-gray-500">{quote.client_phone}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-gray-700">Fecha de Emisión:</p>
+            <p className="text-gray-600">{new Date(quote.created_at).toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        {/* Tabla de Productos/Servicios */}
+        <div className="p-6">
+          <table className="w-full text-left text-sm mb-6">
+            <thead>
+              <tr className="border-b text-navy-900 font-bold">
+                <th className="py-2">Descripción</th>
+                <th className="py-2 text-center">Cant.</th>
+                <th className="py-2 text-right">Precio U.</th>
+                <th className="py-2 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {quote.items.map((item, idx) => (
+                <tr key={idx}>
+                  <td className="py-3">
+                    <p className="font-semibold text-gray-800">{item.item_name}</p>
+                    <p className="text-xs text-gray-400">SKU: {item.sku}</p>
+                  </td>
+                  <td className="py-3 text-center">{item.quantity}</td>
+                  <td className="py-3 text-right">${item.unit_price.toFixed(2)}</td>
+                  <td className="py-3 text-right font-semibold">${item.subtotal.toFixed(2)}</td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {quotes.map((quote) => (
-                  <tr key={quote.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{quote.quote_number}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{quote.client_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${quote.total_amount.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        quote.status === 'Aprobada' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {quote.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(quote.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+              ))}
+            </tbody>
+          </table>
+
+          {/* Totales */}
+          <div className="w-full md:w-1/2 ml-auto space-y-2 border-t pt-4 text-sm">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>${quote.subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Impuesto ({quote.tax_rate}%):</span>
+              <span>${quote.tax_amount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-navy-900 text-lg border-t pt-2">
+              <span>Total Final:</span>
+              <span>${quote.total_amount.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Acciones para el consumidor */}
+        <div className="bg-gray-50 p-6 flex flex-col md:flex-row gap-4 justify-between items-center border-t">
+          <button
+            onClick={handleDownload}
+            className="w-full md:w-auto bg-navy-900 text-white font-bold px-6 py-2.5 rounded shadow hover:bg-navy-800 text-sm"
+          >
+            📥 Descargar / Imprimir PDF
+          </button>
+
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(`Hola, quisiera confirmar la cotización Nº #${quote.quote_number}`)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full md:w-auto bg-green-600 text-white font-bold px-6 py-2.5 rounded shadow hover:bg-green-500 text-center text-sm"
+          >
+            💬 Contactar por WhatsApp
+          </a>
         </div>
       </div>
     </div>
