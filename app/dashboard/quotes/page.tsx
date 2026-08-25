@@ -8,7 +8,6 @@ import Link from 'next/link';
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     fetchQuotes();
@@ -16,6 +15,7 @@ export default function QuotesPage() {
 
   async function fetchQuotes() {
     setLoading(true);
+    const supabase = createClient();
     const { data } = await supabase
       .from('quotes')
       .select('*')
@@ -27,6 +27,7 @@ export default function QuotesPage() {
 
   const handleMarkAsSold = async (quote: Quote) => {
     if (quote.status === 'vendida') return;
+    const supabase = createClient();
 
     // 1. Cambiar estado a vendida
     await supabase
