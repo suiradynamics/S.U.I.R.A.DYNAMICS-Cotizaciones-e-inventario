@@ -3,172 +3,155 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { Quote } from '@/lib/types';
-import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
-export default function PublicQuotePage() {
-  const params = useParams();
-  const token = params?.token as string;
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [timeLeft, setTimeLeft] = useState<string>('');
-  const [expired, setExpired] = useState(false);
+export default function QuotesPage() {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
-    if (!token) return;
+    fetchQuotes();
+  }, []);
 
-    async function loadQuote() {
-      const { data } = await supabase
-        .from('quotes')
-        .select('*')
-        .eq('public_token', token)
-        .single();
+  async function fetchQuotes() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('quotes')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      if (data) {
-        setQuote(data);
+    if (data) setQuotes(data);
+    setLoading(false);
+  }
 
-        // Registrar lectura en vivo si es la primera vez que entra
-        if (!data.viewed_at) {
+  const handleMarkAsSold = async (quote: Quote) => {
+    if (quote.status === 'vendida') return;
+
+    // 1. Cambiar estado a vendida
+    await supabase
+      .from('quotes')
+      .update({ status: 'vendida' })
+      .eq('id', quote.id);
+
+    // 2. Descontar stock de productos físicos automáticamente
+    for (const item of quote.items) {
+      if (item.item_type === 'product') {
+        const { data: prod } = await supabase
+          .from('inventory')
+          .select('stock')
+          .eq('id', item.item_id)
+          .single();
+
+        if (prod) {
+          const newStock = Math.max(0, prod.stock - item.quantity);
           await supabase
-            .from('quotes')
-            .update({ viewed_at: new Date().toISOString() })
-            .eq('id', data.id);
+            .from('inventory')
+            .update({ stock: newStock })
+            .eq('id', item.item_id);
         }
       }
     }
 
-    loadQuote();
-  }, [token, supabase]);
+    // 3. Registrar en historial de ventas
+    const summary = quote.items.map(i => `${i.item_name} (x${i.quantity})`).join(', ');
+    await supabase.from('sales_history').insert([{
+      quote_id: quote.id,
+      total_sale: quote.total_amount,
+      items_summary: summary
+    }]);
 
-  // Cronómetro de validez en vivo
-  useEffect(() => {
-    if (!quote) return;
-
-    const timer = setInterval(() => {
-      const expires = new Date(quote.expires_at).getTime();
-      const now = new Date().getTime();
-      const diff = expires - now;
-
-      if (diff <= 0) {
-        setExpired(true);
-        setTimeLeft('Cotización Expirada');
-        clearInterval(timer);
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [quote]);
-
-  const handleDownload = async () => {
-    if (!quote) return;
-    
-    // Registrar evento de descarga
-    await supabase
-      .from('quotes')
-      .update({ downloaded_at: new Date().toISOString() })
-      .eq('id', quote.id);
-
-    window.print(); // Abre el diálogo nativo para imprimir o guardar como PDF
+    fetchQuotes();
   };
 
-  if (!quote) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-500">Cargando cotización...</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-10 flex flex-col items-center">
-      <div className="max-w-3xl w-full bg-white rounded-lg shadow-lg overflow-hidden border">
-        {/* Encabezado Corporativo */}
-        <div className="bg-navy-900 text-white p-6 flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-xl font-bold">S.U.I.R.A. Dynamics</h1>
-            <p className="text-xs text-gray-300">Cotización Oficial Nº #{quote.quote_number}</p>
+            <h1 className="text-2xl font-bold text-navy-900">Gestión de Cotizaciones</h1>
+            <p className="text-sm text-gray-600">S.U.I.R.A. Dynamics Commercial Hub</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-300">Tiempo de Validez:</p>
-            <p className={`text-sm font-extrabold ${expired ? 'text-brandRed-500' : 'text-green-400'}`}>
-              {timeLeft}
-            </p>
+          <div className="flex gap-3">
+            <Link
+              href="/dashboard/quotes/create"
+              className="rounded-md bg-navy-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-navy-800"
+            >
+              + Nueva Cotización
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
+            >
+              Volver al Panel
+            </Link>
           </div>
         </div>
 
-        {/* Datos del Cliente y Empresa */}
-        <div className="p-6 border-b grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-bold text-gray-700">Cliente:</p>
-            <p className="text-navy-900 font-semibold">{quote.client_name}</p>
-            <p className="text-gray-500">{quote.client_phone}</p>
-          </div>
-          <div className="text-right">
-            <p className="font-bold text-gray-700">Fecha de Emisión:</p>
-            <p className="text-gray-600">{new Date(quote.created_at).toLocaleDateString()}</p>
-          </div>
-        </div>
-
-        {/* Tabla de Productos/Servicios */}
-        <div className="p-6">
-          <table className="w-full text-left text-sm mb-6">
-            <thead>
-              <tr className="border-b text-navy-900 font-bold">
-                <th className="py-2">Descripción</th>
-                <th className="py-2 text-center">Cant.</th>
-                <th className="py-2 text-right">Precio U.</th>
-                <th className="py-2 text-right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {quote.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="py-3">
-                    <p className="font-semibold text-gray-800">{item.item_name}</p>
-                    <p className="text-xs text-gray-400">SKU: {item.sku}</p>
-                  </td>
-                  <td className="py-3 text-center">{item.quantity}</td>
-                  <td className="py-3 text-right">${item.unit_price.toFixed(2)}</td>
-                  <td className="py-3 text-right font-semibold">${item.subtotal.toFixed(2)}</td>
+        <div className="bg-white shadow-sm rounded-lg overflow-hidden border">
+          {loading ? (
+            <div className="p-6 text-center text-gray-500">Cargando cotizaciones...</div>
+          ) : quotes.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-gray-500 mb-4">No hay cotizaciones registradas aún.</p>
+              <Link
+                href="/dashboard/quotes/create"
+                className="inline-block rounded-md bg-navy-900 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Crear Primera Cotización
+              </Link>
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-navy-900 text-white">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold">Nº</th>
+                  <th className="px-6 py-3 text-left font-semibold">Cliente</th>
+                  <th className="px-6 py-3 text-left font-semibold">Total</th>
+                  <th className="px-6 py-3 text-left font-semibold">Estado</th>
+                  <th className="px-6 py-3 text-left font-semibold">Rastreo</th>
+                  <th className="px-6 py-3 text-right font-semibold">Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Totales */}
-          <div className="w-full md:w-1/2 ml-auto space-y-2 border-t pt-4 text-sm">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>${quote.subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Impuesto ({quote.tax_rate}%):</span>
-              <span>${quote.tax_amount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-navy-900 text-lg border-t pt-2">
-              <span>Total Final:</span>
-              <span>${quote.total_amount.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Acciones para el consumidor */}
-        <div className="bg-gray-50 p-6 flex flex-col md:flex-row gap-4 justify-between items-center border-t">
-          <button
-            onClick={handleDownload}
-            className="w-full md:w-auto bg-navy-900 text-white font-bold px-6 py-2.5 rounded shadow hover:bg-navy-800 text-sm"
-          >
-            📥 Descargar / Imprimir PDF
-          </button>
-
-          <a
-            href={`https://wa.me/?text=${encodeURIComponent(`Hola, quisiera confirmar la cotización Nº #${quote.quote_number}`)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full md:w-auto bg-green-600 text-white font-bold px-6 py-2.5 rounded shadow hover:bg-green-500 text-center text-sm"
-          >
-            💬 Contactar por WhatsApp
-          </a>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {quotes.map((quote) => (
+                  <tr key={quote.id}>
+                    <td className="px-6 py-4 font-bold text-navy-900">#{quote.quote_number}</td>
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-gray-900">{quote.client_name}</p>
+                      <p className="text-xs text-gray-500">{quote.client_phone}</p>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-gray-900">${Number(quote.total_amount).toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-bold rounded-full ${
+                        quote.status === 'vendida' 
+                          ? 'bg-green-100 text-green-800' 
+                          : quote.status === 'expirada' 
+                          ? 'bg-red-100 text-brandRed-600' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {quote.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-xs">
+                      <p>{quote.viewed_at ? `👁️ Vista: ${new Date(quote.viewed_at).toLocaleTimeString()}` : '⏳ No vista'}</p>
+                      <p>{quote.downloaded_at ? `📥 Descargada` : '⏳ No descargada'}</p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {quote.status === 'pendiente' && (
+                        <button
+                          onClick={() => handleMarkAsSold(quote)}
+                          className="bg-green-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-green-700"
+                        >
+                          Marcar como Vendida
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
