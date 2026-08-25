@@ -1,34 +1,26 @@
-export interface BusinessProfile {
-  id: string;
-  company_name: string;
-  ruc_or_id: string;
-  phone: string;
-  email: string;
-  website?: string;
-  address?: string;
-  delete_password_hash: string;
-  default_tax_rate: number;
-}
+// Definición de tipos para S.U.I.R.A. Dynamics
+
+export type ItemType = 'product' | 'service';
 
 export interface InventoryItem {
   id: string;
-  sku: string;
+  user_id: string;
   name: string;
-  description?: string;
-  item_type: 'product' | 'service';
-  category: string;
+  sku: string;
+  category: string; // Ej: Ferretería, Electrónica, etc.
+  item_type: ItemType;
   price: number;
   stock: number;
-  min_stock_alert: number;
-  image_url?: string;
+  min_stock_alert: number; // Umbral configurable para alerta de stock bajo
+  image_url?: string | null; // Opcional
+  created_at: string;
 }
 
 export interface QuoteItem {
-  id?: string;
   item_id: string;
   item_name: string;
   sku: string;
-  item_type: 'product' | 'service';
+  item_type: ItemType;
   unit_price: number;
   quantity: number;
   subtotal: number;
@@ -36,11 +28,10 @@ export interface QuoteItem {
 
 export interface Quote {
   id: string;
+  user_id: string;
   public_token: string;
-  quote_number: string;
   client_name: string;
   client_phone: string;
-  client_email?: string;
   items: QuoteItem[];
   subtotal: number;
   tax_rate: number;
@@ -50,7 +41,5 @@ export interface Quote {
   expires_at: string;
   viewed_at?: string | null;
   downloaded_at?: string | null;
-  assigned_device_id?: string | null;
-  assigned_until?: string | null;
   created_at: string;
 }
