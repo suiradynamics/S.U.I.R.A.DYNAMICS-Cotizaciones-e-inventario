@@ -2,153 +2,305 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
-import { InventoryItem } from '@/lib/types';
+import { InventoryItem, ItemType } from '@/lib/types';
 import Link from 'next/link';
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'product' | 'service'>('product');
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deletePassword, setDeletePassword] = useState('');
+  
+  // Estados para formulario de nuevo ítem
+  const [name, setName] = useState('');
+  const [sku, setSku] = useState('');
+  const [category, setCategory] = useState('');
+  const [itemType, setItemType] = useState<ItemType>('product');
+  const [price, setPrice] = useState<number>(0);
+  const [stock, setStock] = useState<number>(0);
+  const [minStockAlert, setMinStockAlert] = useState<number>(5);
+  const [imageUrl, setImageUrl] = useState('');
+  
+  // Estado para el modal de contraseña de supervisor (eliminación)
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [supervisorPassword, setSupervisorPassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const supabase = createClient();
+
   useEffect(() => {
-    fetchItems();
+    fetchInventory();
   }, []);
 
-  async function fetchItems() {
+  async function fetchInventory() {
     setLoading(true);
-    const supabase = createClient();
     const { data } = await supabase.from('inventory').select('*').order('name');
     if (data) setItems(data);
     setLoading(false);
   }
 
-  // Cálculo de valor exacto en inventario
-  const totalInventoryValue = items
-    .filter(i => i.item_type === 'product')
-    .reduce((acc, curr) => acc + (curr.price * curr.stock), 0);
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !sku) return;
 
-  const handleDelete = async () => {
-    if (deletePassword !== 'ADMIN123') { // Contraseña de seguridad configurable
-      setDeleteError('Contraseña de seguridad incorrecta.');
-      return;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    if (deleteId) {
-      const supabase = createClient();
-      await supabase.from('inventory').delete().eq('id', deleteId);
-      setDeleteId(null);
-      setDeletePassword('');
-      setDeleteError(null);
-      fetchItems();
+    const { error } = await supabase.from('inventory').insert([{
+      user_id: user.id,
+      name,
+      sku,
+      category: category || 'General',
+      item_type: itemType,
+      price,
+      stock: itemType === 'product' ? stock : 0,
+      min_stock_alert: itemType === 'product' ? minStockAlert : 0,
+      image_url: imageUrl || null
+    }]);
+
+    if (!error) {
+      setName('');
+      setSku('');
+      setCategory('');
+      setPrice(0);
+      setStock(0);
+      setImageUrl('');
+      fetchInventory();
     }
   };
 
-  const filteredItems = items.filter(i => i.item_type === activeTab);
+  const verifyAndDelete = async () => {
+    if (!itemToDelete) return;
+    setDeleteError(null);
+
+    // Verificación de contraseña del usuario actual en Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !user.email) {
+      setDeleteError('Sesión no válida.');
+      return;
+    }
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: supervisorPassword,
+    });
+
+    if (authError) {
+      setDeleteError('Contraseña de supervisor incorrecta.');
+      return;
+    }
+
+    // Si la contraseña es correcta, procede a eliminar
+    const { error } = await supabase.from('inventory').delete().eq('id', itemToDelete.id);
+    if (!error) {
+      setItemToDelete(null);
+      setSupervisorPassword('');
+      fetchInventory();
+    } else {
+      setDeleteError('Error al eliminar de la base de datos.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-navy-900">Catálogo de Inventario y Servicios</h1>
-            <p className="text-sm text-gray-600">S.U.I.R.A. Dynamics System</p>
+            <h1 className="text-2xl font-bold text-navy-900">Gestión de Inventario y Servicios</h1>
+            <p className="text-sm text-gray-600">S.U.I.R.A. Dynamics Commercial Hub</p>
           </div>
-          <Link href="/dashboard" className="rounded-md bg-navy-900 px-4 py-2 text-sm text-white font-semibold hover:bg-navy-800">
+          <Link
+            href="/dashboard"
+            className="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
+          >
             Volver al Panel
           </Link>
         </div>
 
-        {/* Métrica de Valor Total */}
-        <div className="bg-white p-5 rounded-lg shadow-sm mb-6 border-l-4 border-navy-900">
-          <p className="text-sm text-gray-500 font-medium uppercase">Valor Total del Inventario Físico</p>
-          <p className="text-3xl font-bold text-navy-900">${totalInventoryValue.toFixed(2)}</p>
+        {/* Formulario para Agregar Nuevo Ítem */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
+          <h2 className="text-lg font-bold text-navy-900 mb-4">Registrar Nuevo Producto o Servicio</h2>
+          <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              placeholder="Nombre del ítem *"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="p-2 border rounded text-sm"
+              required
+            />
+            <input
+              type="text"
+              placeholder="SKU o Código *"
+              value={sku}
+              onChange={e => setSku(e.target.value)}
+              className="p-2 border rounded text-sm"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Categoría / Área (Ej: Ferretería)"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="p-2 border rounded text-sm"
+            />
+            <select
+              value={itemType}
+              onChange={e => setItemType(e.target.value as ItemType)}
+              className="p-2 border rounded text-sm"
+            >
+              <option value="product">Producto Físico (Con Stock)</option>
+              <option value="service">Servicio (Sin Stock)</option>
+            </select>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="Precio ($) *"
+              value={price || ''}
+              onChange={e => setPrice(Number(e.target.value))}
+              className="p-2 border rounded text-sm"
+              required
+            />
+            {itemType === 'product' && (
+              <>
+                <input
+                  type="number"
+                  placeholder="Stock inicial *"
+                  value={stock || ''}
+                  onChange={e => setStock(Number(e.target.value))}
+                  className="p-2 border rounded text-sm"
+                  required
+                />
+                <input
+                  type="number"
+                  placeholder="Alerta de Stock Mínimo"
+                  value={minStockAlert || ''}
+                  onChange={e => setMinStockAlert(Number(e.target.value))}
+                  className="p-2 border rounded text-sm"
+                />
+              </>
+            )}
+            <input
+              type="url"
+              placeholder="URL de Imagen (Opcional)"
+              value={imageUrl}
+              onChange={e => setImageUrl(e.target.value)}
+              className="p-2 border rounded text-sm md:col-span-2"
+            />
+            <button
+              type="submit"
+              className="md:col-span-3 bg-navy-900 text-white font-bold py-2.5 rounded hover:bg-navy-800 transition text-sm"
+            >
+              + Guardar en el Inventario
+            </button>
+          </form>
         </div>
 
-        {/* Filtros Pestañas */}
-        <div className="flex gap-4 mb-4 border-b">
-          <button
-            onClick={() => setActiveTab('product')}
-            className={`pb-2 px-4 font-semibold ${activeTab === 'product' ? 'border-b-2 border-navy-900 text-navy-900' : 'text-gray-400'}`}
-          >
-            Productos Físicos
-          </button>
-          <button
-            onClick={() => setActiveTab('service')}
-            className={`pb-2 px-4 font-semibold ${activeTab === 'service' ? 'border-b-2 border-navy-900 text-navy-900' : 'text-gray-400'}`}
-          >
-            Servicios
-          </button>
-        </div>
-
-        {/* Tabla */}
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-navy-900 text-white">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase">SKU</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Nombre</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Categoría / Área</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Precio Unit.</th>
-                {activeTab === 'product' && <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Stock</th>}
-                <th className="px-6 py-3 text-right text-xs font-semibold uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredItems.map(item => {
-                const isLowStock = item.item_type === 'product' && item.stock <= item.min_stock_alert;
-                return (
-                  <tr key={item.id} className={isLowStock ? 'bg-red-50' : ''}>
-                    <td className="px-6 py-4 text-sm font-bold text-gray-900">{item.sku}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{item.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{item.category}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">${Number(item.price).toFixed(2)}</td>
-                    {activeTab === 'product' && (
-                      <td className="px-6 py-4 text-sm font-bold">
-                        <span className={isLowStock ? 'text-brandRed-600 font-extrabold' : 'text-gray-900'}>
-                          {item.stock} {isLowStock && '⚠️ (Poco Stock)'}
+        {/* Tabla de Listado */}
+        <div className="bg-white shadow-sm rounded-lg overflow-hidden border">
+          {loading ? (
+            <div className="p-6 text-center text-gray-500">Cargando inventario...</div>
+          ) : items.length === 0 ? (
+            <div className="p-12 text-center text-gray-500">No hay productos ni servicios registrados todavía.</div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-navy-900 text-white">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold">Ítems</th>
+                  <th className="px-6 py-3 text-left font-semibold">SKU / Área</th>
+                  <th className="px-6 py-3 text-left font-semibold">Tipo</th>
+                  <th className="px-6 py-3 text-right font-semibold">Precio</th>
+                  <th className="px-6 py-3 text-center font-semibold">Stock / Alerta</th>
+                  <th className="px-6 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {items.map((item) => {
+                  const isLowStock = item.item_type === 'product' && item.stock <= item.min_stock_alert;
+                  return (
+                    <tr key={item.id} className={isLowStock ? 'bg-red-50/50' : ''}>
+                      <td className="px-6 py-4 flex items-center gap-3">
+                        {item.image_url && (
+                          <img src={item.image_url} alt={item.name} className="w-10 h-10 object-cover rounded border" />
+                        )}
+                        <div>
+                          <p className="font-semibold text-gray-900">{item.name}</p>
+                          <p className="text-xs text-gray-500">{item.category}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-mono text-xs text-gray-700">{item.sku}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded ${item.item_type === 'product' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                          {item.item_type === 'product' ? 'Producto' : 'Servicio'}
                         </span>
                       </td>
-                    )}
-                    <td className="px-6 py-4 text-right text-sm">
-                      <button
-                        onClick={() => setDeleteId(item.id)}
-                        className="text-brandRed-600 font-semibold hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-6 py-4 text-right font-bold text-gray-900">${item.price.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-center">
+                        {item.item_type === 'product' ? (
+                          <div>
+                            <span className={`font-bold ${item.stock === 0 ? 'text-brandRed-600' : isLowStock ? 'text-yellow-600' : 'text-gray-900'}`}>
+                              {item.stock} unids.
+                            </span>
+                            {isLowStock && <p className="text-[10px] text-brandRed-600 font-semibold">⚠️ Stock Bajo</p>}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => setItemToDelete(item)}
+                          className="bg-red-100 text-brandRed-600 hover:bg-red-200 px-3 py-1.5 rounded text-xs font-bold"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
-      </div>
 
-      {/* Modal de Seguridad para Eliminar */}
-      {deleteId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-lg font-bold text-navy-900 mb-2">Requiere Contraseña Administrativa</h3>
-            <p className="text-sm text-gray-600 mb-4">Ingresa la clave autorizada para eliminar este ítem del inventario.</p>
-            <input
-              type="password"
-              placeholder="Contraseña de seguridad"
-              value={deletePassword}
-              onChange={e => setDeletePassword(e.target.value)}
-              className="w-full p-2 border rounded mb-3 text-sm"
-            />
-            {deleteError && <p className="text-xs text-brandRed-600 mb-3">{deleteError}</p>}
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-sm bg-gray-200 rounded">Cancelar</button>
-              <button onClick={handleDelete} className="px-4 py-2 text-sm bg-brandRed-600 text-white rounded">Confirmar Eliminación</button>
+        {/* Modal de Seguridad (Contraseña Gerencial para Eliminar) */}
+        {itemToDelete && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg">
+              <h3 className="text-lg font-bold text-navy-900 mb-2">Restricción de Seguridad</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Para eliminar <span className="font-semibold text-gray-900">{itemToDelete.name}</span> del inventario, se requiere introducir la contraseña de supervisor/cuenta:
+              </p>
+              {deleteError && (
+                <div className="mb-4 bg-red-50 text-brandRed-600 p-3 rounded text-sm">
+                  {deleteError}
+                </div>
+              )}
+              <input
+                type="password"
+                placeholder="Contraseña de supervisor"
+                value={supervisorPassword}
+                onChange={e => setSupervisorPassword(e.target.value)}
+                className="w-full p-2 border rounded text-sm mb-4"
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => { setItemToDelete(null); setSupervisorPassword(''); setDeleteError(null); }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={verifyAndDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded text-sm font-semibold hover:bg-red-700"
+                >
+                  Confirmar Eliminación
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
