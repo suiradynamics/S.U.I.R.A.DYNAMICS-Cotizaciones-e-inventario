@@ -1,3 +1,7 @@
-(O usa export default defineConfig({}); asegurándote de importar bien la función desde @opennextjs/cloudflare).
+import type { OpenNextConfig } from "@opennextjs/cloudflare";
 
-Sube ese cambio a GitHub con
+const config: OpenNextConfig = {
+  default: {}
+};
+
+export default config;
