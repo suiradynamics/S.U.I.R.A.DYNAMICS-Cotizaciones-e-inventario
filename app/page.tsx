@@ -1,74 +1,212 @@
-import Link from 'next/link';
+'use client';
+
+import { useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) throw error;
+        alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta o inicia sesión si ya está activa.');
+        setIsLogin(true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error en la autenticación.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Error al iniciar sesión con Google.');
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-gray-50">
+    <main className="flex min-h-screen flex-col items-center justify-between p-6 lg:p-24 bg-gray-50">
       <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4">
+        <p className="flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 shadow-sm">
           S.U.I.R.A. Dynamics &nbsp;
           <code className="font-bold">Cotizaciones e Inventario</code>
         </p>
-        <div className="fixed bottom-0 left-0 flex h-45 w-full items-end justify-center bg-gradient-to-t from-white via-white lg:static lg:size-auto lg:bg-none">
-          <span className="flex place-items-center gap-2 p-8 lg:p-0 font-semibold text-blue-600">
+        <div className="hidden lg:flex h-45 items-end justify-center bg-gradient-to-t from-white via-white lg:static lg:size-auto lg:bg-none">
+          <span className="flex place-items-center gap-2 p-4 font-semibold text-blue-600">
             Sistema Activo v1.0
           </span>
         </div>
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-300 before:w-480 before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-180 after:w-240 after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl mb-4">
+      <div className="relative flex flex-col lg:flex-row items-center justify-center gap-12 w-full max-w-6xl my-12">
+        {/* Lado Izquierdo: Presentación del Sistema */}
+        <div className="flex-1 text-center lg:text-left">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-4">
             Gestión Inteligente de Inventario y Ventas
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-            Control total de productos, servicios y generación de cotizaciones profesionales al instante.
+          <p className="text-lg text-gray-600 mb-6">
+            Control total de productos, servicios y generación de cotizaciones profesionales al instante. Accede a tu cuenta o regístrate para comenzar.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              href="/login"
-              className="rounded-md bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            >
-              Iniciar Sesión
-            </Link>
+          <div className="hidden lg:grid grid-cols-3 gap-4 text-left mt-8">
+            <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-900 mb-1">Inventario</h3>
+              <p className="text-xs text-gray-500">Control estricto de stock y alertas automáticas.</p>
+            </div>
+            <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-900 mb-1">Cotizaciones</h3>
+              <p className="text-xs text-gray-500">Cálculo de impuestos y envío directo rápido.</p>
+            </div>
+            <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-900 mb-1">Reportes</h3>
+              <p className="text-xs text-gray-500">Seguimiento de estados y métricas clave.</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:grid-cols-3 lg:text-left gap-8">
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Inventario{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm text-gray-500`}>
-            Control riguroso de stock, alertas de bajo inventario y clasificación de productos y servicios.
-          </p>
-        </div>
+        {/* Lado Derecho: Formulario Unificado de Acceso / Registro */}
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {isLogin ? 'Ingresa tus credenciales para acceder' : 'Regístrate para empezar a cotizar'}
+            </p>
+          </div>
 
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Cotizaciones{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm text-gray-500`}>
-            Creación rápida de cotizaciones profesionales con cálculo de impuestos y envío directo.
-          </p>
-        </div>
+          {error && (
+            <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+              {error}
+            </div>
+          )}
 
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Reportes{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm text-gray-500`}>
-            Seguimiento de estados de cotizaciones (vistas, aprobadas, cerradas) y métricas clave.
-          </p>
+          <form onSubmit={handleAuth} className="space-y-4">
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre Completo</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                  placeholder="Félix Suira"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Correo Electrónico</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                placeholder="correo@ejemplo.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Contraseña</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50"
+            >
+              {loading ? 'Procesando...' : isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+            </button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">O continúa con</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleGoogleLogin}
+            type="button"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all shadow-sm"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            Google
+          </button>
+
+          <div className="text-center mt-6">
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-xs text-blue-600 hover:underline font-medium"
+            >
+              {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+            </button>
+          </div>
         </div>
       </div>
     </main>
