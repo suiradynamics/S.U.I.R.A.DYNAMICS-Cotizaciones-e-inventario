@@ -5,7 +5,6 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -15,32 +14,41 @@ export default function Home() {
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        router.push('/dashboard');
-        router.refresh();
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        if (error) throw error;
-        alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta o inicia sesión.');
-        setIsLogin(true);
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      router.push('/dashboard');
+      router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error en la autenticación.');
+      setError(err.message || 'Ocurrió un error al iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta o inicia sesión.');
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error en el registro.');
     } finally {
       setLoading(false);
     }
@@ -98,71 +106,57 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {isLogin ? 'Ingresa tus credenciales para acceder' : 'Regístrate para empezar a cotizar'}
-            </p>
-          </div>
-
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8">
+          
           {error && (
-            <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && (
+          {/* SECCIÓN 1: INICIAR SESIÓN */}
+          <div>
+            <div className="text-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Bienvenido de nuevo</h2>
+              <p className="text-sm text-gray-500 mt-1">Ingresa tus credenciales para acceder</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre Completo</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Correo Electrónico</label>
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
-                  placeholder="Félix Suira"
+                  placeholder="correo@ejemplo.com"
                 />
               </div>
-            )}
 
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Correo Electrónico</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
-                placeholder="correo@ejemplo.com"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                  placeholder="••••••••"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Contraseña</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
-                placeholder="••••••••"
-              />
-            </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50"
+              >
+                {loading ? 'Procesando...' : 'Iniciar Sesión'}
+              </button>
+            </form>
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50"
-            >
-              {loading ? 'Procesando...' : isLogin ? 'Iniciar Sesión' : 'Registrarse'}
-            </button>
-          </form>
-
-          <div className="relative my-6">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200" />
             </div>
@@ -197,17 +191,62 @@ export default function Home() {
             Google
           </button>
 
-          <div className="text-center mt-6">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-xs text-blue-600 hover:underline font-medium"
-            >
-              {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
-            </button>
+          {/* SECCIÓN 2: REGISTRO SIEMPRE VISIBLE ABAJO */}
+          <div className="pt-6 border-t border-gray-200">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">¿No tienes cuenta?</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Regístrate para empezar a cotizar</p>
+            </div>
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre Completo</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                  placeholder="Félix Suira"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Correo Electrónico</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 px-4 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50"
+              >
+                {loading ? 'Procesando...' : 'Registrarse'}
+              </button>
+            </form>
           </div>
+
         </div>
       </div>
     </main>
   );
 }
-```[cite: 3]
