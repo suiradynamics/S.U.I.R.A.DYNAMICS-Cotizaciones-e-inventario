@@ -1,5 +1,3 @@
-import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+import { defineConfig } from "@opennextjs/cloudflare";
 
-export default defineCloudflareConfig({
-  // Configuración estándar para empaquetar Next.js en Cloudflare
-});
+export default defineConfig({});
