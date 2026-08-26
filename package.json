@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "opennextjs-cloudflare",
+    "build": "echo '=== INTENTO 1 ===' && echo 'export default { default: {} }' > open-next.config.ts && npx @opennextjs/cloudflare || (echo '=== INTENTO 2 ===' && echo 'export default { default: { override: { wrapper: \"cloudflare\" } } }' > open-next.config.ts && npx @opennextjs/cloudflare) || (echo '=== INTENTO 3 ===' && rm -f open-next.config.ts open-next.config.js && npx @opennextjs/cloudflare)",
     "start": "next start",
     "lint": "next lint"
   },
