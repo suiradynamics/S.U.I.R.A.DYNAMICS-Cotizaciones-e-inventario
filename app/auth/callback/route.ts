@@ -1,12 +1,13 @@
-import { createClient } from '@/lib/supabaseClient';
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
 
   if (code) {
-    const supabase = createClient();
+    const supabase = createServerActionClient({ cookies });
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
