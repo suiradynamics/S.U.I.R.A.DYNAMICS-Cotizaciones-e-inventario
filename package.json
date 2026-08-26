@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx @opennextjs/cloudflare || bunx @opennextjs/cloudflare || node node_modules/@opennextjs/cloudflare/bin/index.js || npx @opennextjs/cloudflare@latest || bunx @opennextjs/cloudflare@latest",
+    "build": "npx @opennextjs/cloudflare build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -19,7 +19,7 @@
     "sonner": "^1.7.4"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^0.4.2",
+    "@opennextjs/cloudflare": "^0.4.8",
     "@types/node": "^20.19.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
