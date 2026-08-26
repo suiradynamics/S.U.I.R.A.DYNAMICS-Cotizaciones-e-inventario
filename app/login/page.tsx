@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { Provider } from '@supabase/supabase-js';
 
-export default function LoginPage() {
+export default function Home() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,7 +22,6 @@ export default function LoginPage() {
     setError(null);
 
     if (isRegistering) {
-      // Proceso de Registro
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -41,7 +40,6 @@ export default function LoginPage() {
         setIsRegistering(false);
       }
     } else {
-      // Proceso de Inicio de Sesión
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -104,7 +102,7 @@ export default function LoginPage() {
                   required={isRegistering}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                  className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 text-gray-900"
                   placeholder="Félix Suira"
                 />
               </div>
@@ -120,7 +118,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 text-gray-900"
                 placeholder="correo@ejemplo.com"
               />
             </div>
@@ -135,7 +133,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 text-gray-900"
                 placeholder="••••••••"
               />
             </div>
@@ -154,7 +152,6 @@ export default function LoginPage() {
                   : 'Entrar al Sistema'}
             </button>
 
-            {/* Botón secundario siempre visible abajo para alternar entre Iniciar Sesión y Registrarse */}
             <button
               type="button"
               onClick={() => { setIsRegistering(!isRegistering); setError(null); }}
@@ -167,7 +164,6 @@ export default function LoginPage() {
           </div>
         </form>
 
-        {/* Separador Visual */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -178,7 +174,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Botones de Redes Sociales */}
           <div className="mt-6 grid grid-cols-1 gap-3">
             <button
               onClick={() => handleOAuthLogin('google')}
@@ -187,25 +182,14 @@ export default function LoginPage() {
             >
               {oauthLoading === 'google' ? 'Cargando...' : 'Google'}
             </button>
-            
-            <button
-              onClick={() => handleOAuthLogin('apple')}
-              disabled={oauthLoading !== null}
-              className="flex w-full items-center justify-center gap-3 rounded-md bg-black px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:opacity-50"
-            >
-              {oauthLoading === 'apple' ? 'Cargando...' : 'Apple'}
-            </button>
-
-            <button
-              onClick={() => handleOAuthLogin('azure')}
-              disabled={oauthLoading !== null}
-              className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {oauthLoading === 'azure' ? 'Cargando...' : 'Microsoft'}
-            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+```[cite: 9]
+
+3. Asegúrate de hacer clic en **"Confirma los cambios"** en la interfaz y realiza una recarga dura en el navegador (`Ctrl + F5`)[cite: 5, 9]. 
+
+¿En qué módulo o sección de S.U.I.R.A. Dynamics te gustaría enfocarte a continuación tras dejar listo este acceso?
