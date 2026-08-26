@@ -37,12 +37,9 @@ export default function LoginPage() {
     setOauthLoading(provider);
     setError(null);
     
+    // Al omitir el redirectTo manual, Supabase maneja la ruta de retorno oficial
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider,
-      options: {
-        // Redirige al usuario de vuelta a tu aplicación después de autenticarse
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
     });
 
     if (error) {
