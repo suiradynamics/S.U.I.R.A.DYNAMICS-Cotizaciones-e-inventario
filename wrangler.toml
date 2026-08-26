@@ -1,4 +1,4 @@
-name = "sura-dynamics"
+name = "suiradynamics-cotizaciones-e-inventario"
 main = ".open-next/worker.js"
 compatibility_date = "2026-03-01"
 
