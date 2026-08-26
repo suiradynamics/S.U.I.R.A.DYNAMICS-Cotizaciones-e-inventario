@@ -1,30 +1,26 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
-export async function createClient() {
-  const cookieStore = await cookies();
+// Server-side Supabase admin client. Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set in env.
+const url = process.env.SUPABASE_URL || '';
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://eqebpqqgsqyzeydfpbyw.supabase.co';
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_INZBpilT5yAh4_OWJeJEQ_xg91voAs';
+if (!url || !serviceKey) {
+  console.warn('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment. Server admin operations will fail.');
+}
 
-  return createServerClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignorado en renderizado estático
-          }
-        },
-      },
-    }
-  );
+export const supabaseAdmin = createClient(url, serviceKey, {
+  auth: { persistSession: false },
+});
+
+// Helper to get user and claims from an access token
+export async function getUserFromToken(accessToken) {
+  if (!accessToken) return null;
+  try {
+    const res = await supabaseAdmin.auth.getUser(accessToken);
+    if (res.error) return null;
+    return res.data.user || null;
+  } catch (e) {
+    console.error('getUserFromToken error', e);
+    return null;
+  }
 }
