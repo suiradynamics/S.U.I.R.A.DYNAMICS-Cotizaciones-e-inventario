@@ -5,7 +5,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -21,7 +21,7 @@ export default function Home() {
     setError(null);
 
     try {
-      if (isLogin) {
+      if (authMode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         router.push('/dashboard');
@@ -37,7 +37,7 @@ export default function Home() {
         });
         if (error) throw error;
         alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta o inicia sesión.');
-        setIsLogin(true);
+        setAuthMode('login');
       }
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error en la autenticación.');
@@ -99,12 +99,39 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+          
+          {/* Pestañas fijas lado a lado: Iniciar Sesión / Registrarse */}
+          <div className="flex border-b border-gray-200 mb-6">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('login'); setError(null); }}
+              className={`flex-1 pb-3 text-sm font-semibold text-center border-b-2 transition-all ${
+                authMode === 'login'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Iniciar Sesión
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('register'); setError(null); }}
+              className={`flex-1 pb-3 text-sm font-semibold text-center border-b-2 transition-all ${
+                authMode === 'register'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Registrarse
+            </button>
+          </div>
+
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
-              {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
+              {authMode === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              {isLogin ? 'Ingresa tus credenciales para acceder' : 'Regístrate para empezar a cotizar'}
+              {authMode === 'login' ? 'Ingresa tus credenciales para acceder' : 'Regístrate para empezar a cotizar'}
             </p>
           </div>
 
@@ -115,7 +142,7 @@ export default function Home() {
           )}
 
           <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && (
+            {authMode === 'register' && (
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Nombre Completo</label>
                 <input
@@ -158,7 +185,7 @@ export default function Home() {
               disabled={loading}
               className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50"
             >
-              {loading ? 'Procesando...' : isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+              {loading ? 'Procesando...' : authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
             </button>
           </form>
 
@@ -196,15 +223,6 @@ export default function Home() {
             </svg>
             Google
           </button>
-
-          <div className="text-center mt-6">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-xs text-blue-600 hover:underline font-medium"
-            >
-              {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
-            </button>
-          </div>
         </div>
       </div>
     </main>
