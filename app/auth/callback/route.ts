@@ -1,24 +1,15 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createClient } from '@/lib/supabaseClient';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') ?? '/dashboard';
+  const origin = requestUrl.origin;
 
   if (code) {
-    try {
-      const supabase = createRouteHandlerClient({ cookies });
-      await supabase.auth.exchangeCodeForSession(code);
-    } catch (error) {
-      console.error('Error al intercambiar el código por sesión:', error);
-      // Si falla, redirige al usuario a la página principal con un error opcional
-      return NextResponse.redirect(new URL('/?error=auth_failed', requestUrl.origin));
-    }
+    const supabase = createClient();
+    await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // Redirección limpia usando el origen de la solicitud actual (evita caídas en localhost)
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
+  return NextResponse.redirect(`${origin}/dashboard`);
 }
