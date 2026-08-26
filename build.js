@@ -4,6 +4,7 @@ console.log('--- INICIANDO BUILD PERSONALIZADO DE NEXT.JS ---');
 execSync('npx next build', { stdio: 'inherit' });
 
 console.log('--- EJECUTANDO ADAPTADOR DE CLOUDFLARE ---');
-execSync('npx @opennextjs/cloudflare', { stdio: 'inherit' });
+// Ejecutamos directamente el archivo binario del paquete instalado
+execSync('node node_modules/@opennextjs/cloudflare/dist/cli/index.js build', { stdio: 'inherit' });
 
 console.log('--- ¡PROCESO COMPLETADO CON ÉXITO! ---');
