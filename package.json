@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "echo '=== INTENTO 1 ===' && echo 'export default { default: {} }' > open-next.config.ts && npx @opennextjs/cloudflare || (echo '=== INTENTO 2 ===' && echo 'export default { default: { override: { wrapper: \"cloudflare\" } } }' > open-next.config.ts && npx @opennextjs/cloudflare) || (echo '=== INTENTO 3 ===' && rm -f open-next.config.ts open-next.config.js && npx @opennextjs/cloudflare)",
+    "build": "npx @opennextjs/cloudflare || bunx @opennextjs/cloudflare || node node_modules/@opennextjs/cloudflare/bin/index.js || npx @opennextjs/cloudflare@latest || bunx @opennextjs/cloudflare@latest",
     "start": "next start",
     "lint": "next lint"
   },
@@ -19,7 +19,7 @@
     "sonner": "^1.7.4"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^0.3.0",
+    "@opennextjs/cloudflare": "^0.4.2",
     "@types/node": "^20.19.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
