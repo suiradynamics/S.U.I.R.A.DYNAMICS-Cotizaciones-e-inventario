@@ -1,12 +1,5 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Desactiva la verificación estática estricta para evitar fallos por faltas de variables de entorno en el build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-};
+import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
-module.exports = nextConfig;
+export default defineCloudflareConfig({
+  // Configuración estándar para empaquetar Next.js en Cloudflare
+});
