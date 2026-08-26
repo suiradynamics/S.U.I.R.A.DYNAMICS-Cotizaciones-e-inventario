@@ -1,14 +1,10 @@
 const { execSync } = require('child_process');
 
-try {
-  console.log('--- Iniciando compilación de Next.js ---');
-  execSync('npx next build', { stdio: 'inherit' });
-  
-  console.log('--- Ejecutando adaptador de Cloudflare ---');
-  execSync('npx @opennextjs/cloudflare', { stdio: 'inherit' });
-  
-  console.log('--- ¡Compilación y empaquetado exitosos! ---');
-} catch (error) {
-  console.error('Error durante el proceso de compilación:', error);
-  process.exit(1);
-}
+console.log('--- INICIANDO BUILD PERSONALIZADO DE NEXT.JS ---');
+execSync('npx next build', { stdio: 'inherit' });
+
+console.log('--- EJECUTANDO ADAPTADOR DE CLOUDFLARE ---');
+// Usamos require para invocar el script del adaptador de forma interna y nativa de Node
+require('./node_modules/@opennextjs/cloudflare/dist/index.js');
+
+console.log('--- ¡PROCESO COMPLETADO CON ÉXITO! ---');
