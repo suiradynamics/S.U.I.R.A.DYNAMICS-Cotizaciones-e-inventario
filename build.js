@@ -8,4 +8,3 @@ console.log('--- EJECUTANDO ADAPTADOR DE CLOUDFLARE ---');
 require('./node_modules/@opennextjs/cloudflare/dist/index.js');
 
 console.log('--- ¡PROCESO COMPLETADO CON ÉXITO! ---');
-
