@@ -36,7 +36,7 @@ export default function Home() {
           },
         });
         if (error) throw error;
-        alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta o inicia sesión si ya está activa.');
+        alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta o inicia sesión.');
         setIsLogin(true);
       }
     } catch (err: any) {
@@ -75,7 +75,6 @@ export default function Home() {
       </div>
 
       <div className="relative flex flex-col lg:flex-row items-center justify-center gap-12 w-full max-w-6xl my-12">
-        {/* Lado Izquierdo: Presentación del Sistema */}
         <div className="flex-1 text-center lg:text-left">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-4">
             Gestión Inteligente de Inventario y Ventas
@@ -99,7 +98,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Lado Derecho: Formulario Unificado de Acceso / Registro */}
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
