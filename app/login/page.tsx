@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
-import { Provider } from '@supabase/supabase-js';
 
 export default function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -11,7 +10,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -38,6 +36,9 @@ export default function LoginPage() {
         alert('¡Registro exitoso! Revisa tu correo electrónico para verificar tu cuenta o inicia sesión.');
         setLoading(false);
         setIsRegistering(false);
+        setEmail('');
+        setPassword('');
+        setFullName('');
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -55,20 +56,18 @@ export default function LoginPage() {
     }
   };
 
-  const handleOAuthLogin = async (provider: Provider) => {
-    setOauthLoading(provider);
+  const handleOAuthLogin = async (provider: 'google') => {
     setError(null);
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider,
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
     if (error) {
       setError(error.message);
-      setOauthLoading(null);
     }
   };
 
@@ -142,7 +141,7 @@ export default function LoginPage() {
           <div className="space-y-3">
             <button
               type="submit"
-              disabled={loading || oauthLoading !== null}
+              disabled={loading}
               className="group relative flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading 
@@ -177,10 +176,10 @@ export default function LoginPage() {
           <div className="mt-6 grid grid-cols-1 gap-3">
             <button
               onClick={() => handleOAuthLogin('google')}
-              disabled={oauthLoading !== null}
+              disabled={loading}
               className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
-              {oauthLoading === 'google' ? 'Cargando...' : 'Google'}
+              Google
             </button>
           </div>
         </div>
