@@ -188,8 +188,3 @@ export default function Home() {
     </div>
   );
 }
-```[cite: 9]
-
-3. Asegúrate de hacer clic en **"Confirma los cambios"** en la interfaz y realiza una recarga dura en el navegador (`Ctrl + F5`)[cite: 5, 9]. 
-
-¿En qué módulo o sección de S.U.I.R.A. Dynamics te gustaría enfocarte a continuación tras dejar listo este acceso?
